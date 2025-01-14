@@ -1,8 +1,18 @@
-import os
 import logging
+import os
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
+shap_pacakge_available = False
+try:
+    # I'm tired of all shap dependency hell
+    # ugh
+    import shap
+    shap_pacakge_available = True
+except Exception:
+    pass
+
 from sklearn.preprocessing import OneHotEncoder
 
 from supervised.algorithms.registry import (
@@ -10,8 +20,6 @@ from supervised.algorithms.registry import (
     MULTICLASS_CLASSIFICATION,
     REGRESSION,
 )
-import shap
-
 
 logger = logging.getLogger(__name__)
 from supervised.utils.config import LOG_LEVEL
@@ -23,7 +31,8 @@ import warnings
 class PlotSHAP:
     @staticmethod
     def is_available(algorithm, X_train, y_train, ml_task):
-
+        if not shap_pacakge_available:
+            return False
         # https://github.com/mljar/mljar-supervised/issues/112 disable for NN
         # https://github.com/mljar/mljar-supervised/issues/114 disable for CatBoost
         if algorithm.algorithm_short_name in ["Baseline", "Neural Network", "CatBoost"]:
@@ -54,7 +63,6 @@ class PlotSHAP:
 
     @staticmethod
     def get_explainer(algorithm, X_train):
-
         explainer = None
         if algorithm.algorithm_short_name in [
             "Xgboost",
@@ -91,7 +99,7 @@ class PlotSHAP:
         predictions = algorithm.predict(X_vald)
 
         if ml_task == MULTICLASS_CLASSIFICATION:
-            oh = OneHotEncoder(sparse=False)
+            oh = OneHotEncoder(sparse_output=False)
             y_encoded = oh.fit_transform(np.array(y_vald).reshape(-1, 1))
             residua = np.sum(np.abs(np.array(y_encoded) - predictions), axis=1)
         else:
@@ -247,9 +255,10 @@ class PlotSHAP:
                     class_names,
                 )
         except Exception as e:
-            print(
-                f"Exception while producing SHAP explanations. {str(e)}\nContinuing ..."
-            )
+            pass
+            # print(
+            #    f"Exception while producing SHAP explanations. {str(e)}\nContinuing ..."
+            # )
 
     @staticmethod
     def decisions_regression(
@@ -341,11 +350,9 @@ class PlotSHAP:
         learner_name,
         class_names,
     ):
-
         for decision_type in ["worst", "best"]:
             m = 1 if decision_type == "worst" else -1
             for i in range(4):
-
                 fig = plt.gcf()
                 shap.multioutput_decision_plot(
                     list(expected_value),

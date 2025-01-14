@@ -1,15 +1,12 @@
-import os
+import shutil
 import unittest
-import tempfile
-import json
+
 import numpy as np
 import pandas as pd
-import shutil
-from sklearn import datasets
 
 from supervised import AutoML
-from supervised.algorithms.registry import MULTICLASS_CLASSIFICATION
 from supervised.algorithms.random_forest import additional
+from supervised.algorithms.registry import MULTICLASS_CLASSIFICATION
 
 additional["max_steps"] = 1
 additional["trees_in_step"] = 1
@@ -20,8 +17,7 @@ additional["max_rounds"] = 1
 
 
 class AutoMLHandleImbalanceTest(unittest.TestCase):
-
-    automl_dir = "automl_1"
+    automl_dir = "AutoMLHandleImbalanceTest"
 
     def tearDown(self):
         shutil.rmtree(self.automl_dir, ignore_errors=True)
@@ -113,7 +109,7 @@ class AutoMLHandleImbalanceTest(unittest.TestCase):
                 "stratify": True,
             },
             start_random_models=1,
-            explain_level=0
+            explain_level=0,
         )
 
         rows = 100

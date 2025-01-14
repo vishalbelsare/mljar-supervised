@@ -1,7 +1,5 @@
 import unittest
-import tempfile
-import json
-import numpy as np
+
 import pandas as pd
 
 from supervised.preprocessing.datetime_transformer import DateTimeTransformer
@@ -9,7 +7,6 @@ from supervised.preprocessing.datetime_transformer import DateTimeTransformer
 
 class DateTimeTransformerTest(unittest.TestCase):
     def test_transformer(self):
-
         d = {
             "col1": [
                 "2020/06/01",

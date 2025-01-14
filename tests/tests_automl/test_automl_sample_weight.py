@@ -1,27 +1,22 @@
-import os
-import unittest
-import tempfile
-import json
-import numpy as np
-import pandas as pd
 import shutil
-from numpy.testing import assert_almost_equal
+import unittest
 
+import numpy as np
+from numpy.testing import assert_almost_equal
 from sklearn import datasets
-from sklearn.pipeline import make_pipeline
-from sklearn.decomposition import PCA
 
 from supervised import AutoML
-from supervised.exceptions import AutoMLException
 
 iris = datasets.load_iris()
-boston = datasets.load_boston()
+housing = datasets.fetch_california_housing()
+# limit data size for faster tests
+housing.data = housing.data[:500]
+housing.target = housing.target[:500]
 breast_cancer = datasets.load_breast_cancer()
 
 
 class AutoMLSampleWeightTest(unittest.TestCase):
-
-    automl_dir = "automl_testing"
+    automl_dir = "AutoMLSampleWeightTest"
 
     def tearDown(self):
         shutil.rmtree(self.automl_dir, ignore_errors=True)
@@ -45,14 +40,14 @@ class AutoMLSampleWeightTest(unittest.TestCase):
         )
         assert_almost_equal(score_1, score_2)
 
-    def test_boston_dataset(self):
-        """Tests AutoML in the boston dataset (Regression)
+    def test_housing_dataset(self):
+        """Tests AutoML in the housing dataset (Regression)
         without and with sample weight"""
         model = AutoML(
             explain_level=0, verbose=1, random_state=1, results_path=self.automl_dir
         )
-        score_1 = model.fit(boston.data, boston.target).score(
-            boston.data, boston.target
+        score_1 = model.fit(housing.data, housing.target).score(
+            housing.data, housing.target
         )
         self.assertGreater(score_1, 0.5)
 
@@ -60,10 +55,10 @@ class AutoMLSampleWeightTest(unittest.TestCase):
         model = AutoML(
             explain_level=0, verbose=1, random_state=1, results_path=self.automl_dir
         )
-        sample_weight = np.ones(boston.data.shape[0])
+        sample_weight = np.ones(housing.data.shape[0])
         score_2 = model.fit(
-            boston.data, boston.target, sample_weight=sample_weight
-        ).score(boston.data, boston.target, sample_weight=sample_weight)
+            housing.data, housing.target, sample_weight=sample_weight
+        ).score(housing.data, housing.target, sample_weight=sample_weight)
         assert_almost_equal(score_1, score_2)
 
     def test_breast_cancer_dataset(self):

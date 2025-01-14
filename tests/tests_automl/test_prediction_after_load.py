@@ -1,19 +1,15 @@
-import os
-import unittest
-import tempfile
-import json
-import numpy as np
-import pandas as pd
 import shutil
+import unittest
+
+from numpy.testing import assert_almost_equal
 from sklearn import datasets
 from sklearn.model_selection import train_test_split
-from numpy.testing import assert_almost_equal
+
 from supervised import AutoML
 
 
 class AutoMLPredictionAfterLoadTest(unittest.TestCase):
-
-    automl_dir = "automl_testing"
+    automl_dir = "AutoMLPredictionAfterLoadTest"
 
     def tearDown(self):
         shutil.rmtree(self.automl_dir, ignore_errors=True)
@@ -21,17 +17,17 @@ class AutoMLPredictionAfterLoadTest(unittest.TestCase):
     def test_integration(self):
         a = AutoML(
             results_path=self.automl_dir,
-            mode='Compete',
-            algorithms=['Baseline','CatBoost', 'LightGBM', 'Xgboost'],
+            mode="Compete",
+            algorithms=["Baseline", "CatBoost", "LightGBM", "Xgboost"],
             stack_models=True,
-            total_time_limit= 60,
+            total_time_limit=60,
             validation_strategy={
                 "validation_type": "kfold",
                 "k_folds": 3,
                 "shuffle": True,
                 "stratify": True,
-                "random_seed": 123
-            }
+                "random_seed": 123,
+            },
         )
 
         X, y = datasets.make_classification(
@@ -52,6 +48,6 @@ class AutoMLPredictionAfterLoadTest(unittest.TestCase):
 
         a2 = AutoML(results_path=self.automl_dir)
         p2 = a2.predict_all(X_test)
-        
+
         assert_almost_equal(p["prediction_0"].iloc[0], p2["prediction_0"].iloc[0])
         assert_almost_equal(p["prediction_7"].iloc[0], p2["prediction_7"].iloc[0])

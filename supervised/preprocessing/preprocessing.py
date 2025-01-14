@@ -1,30 +1,26 @@
-import copy
-import pandas as pd
-import numpy as np
-import warnings
 import logging
 
-from supervised.preprocessing.preprocessing_utils import PreprocessingUtils
-from supervised.preprocessing.preprocessing_categorical import PreprocessingCategorical
-from supervised.preprocessing.preprocessing_missing import PreprocessingMissingValues
-from supervised.preprocessing.scale import Scale
-from supervised.preprocessing.label_encoder import LabelEncoder
-from supervised.preprocessing.label_binarizer import LabelBinarizer
+import numpy as np
+import pandas as pd
+
+from supervised.algorithms.registry import (
+    BINARY_CLASSIFICATION,
+    MULTICLASS_CLASSIFICATION,
+)
+from supervised.exceptions import AutoMLException
 from supervised.preprocessing.datetime_transformer import DateTimeTransformer
-from supervised.preprocessing.text_transformer import TextTransformer
+from supervised.preprocessing.exclude_missing_target import ExcludeRowsMissingTarget
 from supervised.preprocessing.goldenfeatures_transformer import (
     GoldenFeaturesTransformer,
 )
 from supervised.preprocessing.kmeans_transformer import KMeansTransformer
-
-from supervised.preprocessing.exclude_missing_target import ExcludeRowsMissingTarget
-from supervised.algorithms.registry import (
-    BINARY_CLASSIFICATION,
-    MULTICLASS_CLASSIFICATION,
-    REGRESSION,
-)
+from supervised.preprocessing.label_binarizer import LabelBinarizer
+from supervised.preprocessing.label_encoder import LabelEncoder
+from supervised.preprocessing.preprocessing_categorical import PreprocessingCategorical
+from supervised.preprocessing.preprocessing_missing import PreprocessingMissingValues
+from supervised.preprocessing.scale import Scale
+from supervised.preprocessing.text_transformer import TextTransformer
 from supervised.utils.config import LOG_LEVEL
-from supervised.exceptions import AutoMLException
 
 logger = logging.getLogger(__name__)
 logger.setLevel(LOG_LEVEL)
@@ -86,7 +82,7 @@ class Preprocessing(object):
             target_preprocessing = self._params.get("target_preprocessing")
             logger.debug("target_preprocessing params: {}".format(target_preprocessing))
 
-            X_train, y_train, sample_weight = ExcludeRowsMissingTarget.transform(
+            X_train, y_train, sample_weight, _ = ExcludeRowsMissingTarget.transform(
                 X_train, y_train, sample_weight
             )
 
@@ -230,7 +226,6 @@ class Preprocessing(object):
 
         new_datetime_columns = []
         for col in cols_to_process:
-
             t = DateTimeTransformer()
             t.fit(X_train, col)
             X_train = t.transform(X_train)
@@ -322,6 +317,7 @@ class Preprocessing(object):
                 X_validation,
                 y_validation,
                 sample_weight_validation,
+                _,
             ) = ExcludeRowsMissingTarget.transform(
                 X_validation, y_validation, sample_weight_validation
             )
@@ -372,7 +368,7 @@ class Preprocessing(object):
         # in case new data there can be gaps!
         if (
             X_validation is not None
-            and np.sum(np.sum(pd.isnull(X_validation))) > 0
+            and pd.isnull(X_validation).sum().sum() > 0
             and len(self._params["columns_preprocessing"]) > 0
         ):
             # there is something missing, fill it
@@ -595,7 +591,6 @@ class Preprocessing(object):
         return preprocessing_params
 
     def from_json(self, data_json, results_path):
-
         self._params = data_json.get("params", self._params)
 
         if "remove_columns" in data_json:

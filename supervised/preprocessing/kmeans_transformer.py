@@ -1,13 +1,11 @@
 import os
-import numpy as np
-import pandas as pd
-import datetime
-import json
 import time
-import joblib
 
+import joblib
+import numpy as np
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.preprocessing import StandardScaler
+
 from supervised.exceptions import AutoMLException
 
 

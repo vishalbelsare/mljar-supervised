@@ -1,21 +1,16 @@
-import os
-import unittest
-import tempfile
 import json
-import numpy as np
-import pandas as pd
-import shutil
+import os
+import tempfile
+import unittest
 
 from supervised import AutoML
 from supervised.exceptions import AutoMLException
 
 
 class AutoMLModelsNeededForPredictTest(unittest.TestCase):
-
     # models_needed_on_predict
 
     def test_models_needed_on_predict(self):
-
         with tempfile.TemporaryDirectory() as tmpdir:
             params = {
                 "saved": [

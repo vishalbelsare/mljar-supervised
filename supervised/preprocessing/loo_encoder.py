@@ -1,10 +1,8 @@
-import copy
 import json
 import logging
-import numpy as np
-import pandas as pd
 import warnings
-from decimal import Decimal
+
+import pandas as pd
 from category_encoders.leave_one_out import LeaveOneOutEncoder
 
 from supervised.utils.config import LOG_LEVEL
@@ -39,7 +37,7 @@ class LooEncoder(object):
             "cols": self.enc.cols,
             "dim": self.enc._dim,
             "mean": float(self.enc._mean),
-            "feature_names": self.enc.feature_names,
+            "feature_names": self.enc.get_feature_names_out(),
             "mapping": {},
         }
         for k, v in self.enc.mapping.items():

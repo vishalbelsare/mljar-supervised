@@ -1,33 +1,33 @@
-import logging
 import copy
-import numpy as np
-import pandas as pd
-import os
+import logging
 import time
 
+import numpy as np
+import pandas as pd
+from sklearn.base import ClassifierMixin, RegressorMixin
+
 from supervised.algorithms.algorithm import BaseAlgorithm
-from supervised.algorithms.registry import AlgorithmsRegistry
 from supervised.algorithms.registry import (
     BINARY_CLASSIFICATION,
     MULTICLASS_CLASSIFICATION,
     REGRESSION,
+    AlgorithmsRegistry,
 )
 from supervised.preprocessing.preprocessing_utils import PreprocessingUtils
+from supervised.utils.config import LOG_LEVEL
 from supervised.utils.metric import (
-    CatBoostEvalMetricSpearman,
-    CatBoostEvalMetricPearson,
     CatBoostEvalMetricAveragePrecision,
     CatBoostEvalMetricMSE,
+    CatBoostEvalMetricPearson,
+    CatBoostEvalMetricSpearman,
     CatBoostEvalMetricUserDefined,
 )
-
-from supervised.utils.config import LOG_LEVEL
 
 logger = logging.getLogger(__name__)
 logger.setLevel(LOG_LEVEL)
 
-from catboost import CatBoostClassifier, CatBoostRegressor, CatBoost, Pool
 import catboost
+from catboost import CatBoostClassifier, CatBoostRegressor, Pool
 
 
 def catboost_eval_metric(ml_task, eval_metric):
@@ -79,7 +79,6 @@ def catboost_objective(ml_task, eval_metric):
 
 
 class CatBoostAlgorithm(BaseAlgorithm):
-
     algorithm_name = "CatBoost"
     algorithm_short_name = "CatBoost"
     warmup_iterations = 20
@@ -199,9 +198,10 @@ class CatBoostAlgorithm(BaseAlgorithm):
             for i in range(X.shape[1]):
                 if PreprocessingUtils.is_categorical(X.iloc[:, i]):
                     self.cat_features += [i]
-                    X.iloc[:, i] = X.iloc[:, i].astype(str)
+                    col_name = X.columns[i]
+                    X[col_name] = X[col_name].astype(str)
                     if X_validation is not None:
-                        X_validation.iloc[:, i] = X_validation.iloc[:, i].astype(str)
+                        X_validation[col_name] = X_validation[col_name].astype(str)
 
         eval_set = None
         if X_validation is not None and y_validation is not None:
@@ -277,6 +277,9 @@ class CatBoostAlgorithm(BaseAlgorithm):
                 }
             )
             result.to_csv(log_to_file, index=False, header=False)
+
+        if self.params["ml_task"] != REGRESSION:
+            self.classes_ = np.unique(y)
 
     def is_fitted(self):
         return self.model is not None and self.model.tree_count_ is not None
@@ -367,9 +370,13 @@ required_preprocessing = [
 ]
 
 
+class CBClassifier(ClassifierMixin, CatBoostAlgorithm):
+    pass
+
+
 AlgorithmsRegistry.add(
     BINARY_CLASSIFICATION,
-    CatBoostAlgorithm,
+    CBClassifier,
     classification_params,
     required_preprocessing,
     additional,
@@ -389,7 +396,7 @@ multiclass_classification_default_params["learning_rate"] = 0.15
 
 AlgorithmsRegistry.add(
     MULTICLASS_CLASSIFICATION,
-    CatBoostAlgorithm,
+    CBClassifier,
     multiclass_classification_params,
     required_preprocessing,
     additional,
@@ -414,9 +421,14 @@ regression_default_params = {
     "loss_function": "RMSE",
 }
 
+
+class CBRegressor(RegressorMixin, CatBoostAlgorithm):
+    pass
+
+
 AlgorithmsRegistry.add(
     REGRESSION,
-    CatBoostAlgorithm,
+    CBRegressor,
     regression_params,
     regression_required_preprocessing,
     additional,

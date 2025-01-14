@@ -1,23 +1,23 @@
 import numpy as np
-import xgboost as xgb
 import optuna
+import optuna_integration
+import xgboost as xgb
 
-from supervised.utils.metric import Metric
+from supervised.algorithms.registry import (
+    MULTICLASS_CLASSIFICATION,
+)
+from supervised.algorithms.xgboost import xgboost_eval_metric, xgboost_objective
 from supervised.utils.metric import (
+    Metric,
+    xgboost_eval_metric_accuracy,
+    xgboost_eval_metric_average_precision,
+    xgboost_eval_metric_f1,
+    xgboost_eval_metric_mse,
+    xgboost_eval_metric_pearson,
     xgboost_eval_metric_r2,
     xgboost_eval_metric_spearman,
-    xgboost_eval_metric_pearson,
-    xgboost_eval_metric_f1,
-    xgboost_eval_metric_average_precision,
-    xgboost_eval_metric_accuracy,
-    xgboost_eval_metric_mse,
     xgboost_eval_metric_user_defined,
 )
-from supervised.algorithms.registry import BINARY_CLASSIFICATION
-from supervised.algorithms.registry import MULTICLASS_CLASSIFICATION
-from supervised.algorithms.registry import REGRESSION
-
-from supervised.algorithms.xgboost import xgboost_objective, xgboost_eval_metric
 
 EPS = 1e-8
 
@@ -102,7 +102,7 @@ class XgboostObjective:
         if self.num_class is not None:
             param["num_class"] = self.num_class
         try:
-            pruning_callback = optuna.integration.XGBoostPruningCallback(
+            pruning_callback = optuna_integration.XGBoostPruningCallback(
                 trial, f"validation-{self.eval_metric_name}"
             )
             bst = xgb.train(
@@ -113,9 +113,11 @@ class XgboostObjective:
                 early_stopping_rounds=self.early_stopping_rounds,
                 callbacks=[pruning_callback],
                 verbose_eval=False,
-                feval=self.custom_eval_metric,
+                custom_metric=self.custom_eval_metric,
             )
-            preds = bst.predict(self.dvalidation, ntree_limit=bst.best_ntree_limit)
+            preds = bst.predict(
+                self.dvalidation, iteration_range=(0, bst.best_iteration)
+            )
             score = self.eval_metric(self.y_validation, preds)
             if Metric.optimize_negative(self.eval_metric.name):
                 score *= -1.0

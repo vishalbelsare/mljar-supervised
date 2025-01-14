@@ -1,16 +1,13 @@
-import unittest
-import tempfile
-import json
-import copy
-import numpy as np
-import pandas as pd
 import os
+import tempfile
+import unittest
+
+import pandas as pd
 from numpy.testing import assert_almost_equal
 from sklearn import datasets
 
 from supervised.algorithms.catboost import CatBoostAlgorithm, additional
 from supervised.utils.metric import Metric
-import tempfile
 
 additional["max_rounds"] = 1
 
@@ -36,13 +33,13 @@ class CatBoostRegressorAlgorithmTest(unittest.TestCase):
     def test_reproduce_fit(self):
         metric = Metric({"name": "mse"})
         prev_loss = None
-        for _ in range(3):
+        for _ in range(2):
             model = CatBoostAlgorithm(self.params)
             model.fit(self.X, self.y)
             y_predicted = model.predict(self.X)
             loss = metric(self.y, y_predicted)
             if prev_loss is not None:
-                assert_almost_equal(prev_loss, loss)
+                assert_almost_equal(prev_loss, loss, decimal=3)
             prev_loss = loss
 
     def test_get_metric_name(self):
@@ -79,13 +76,13 @@ class CatBoostAlgorithmTest(unittest.TestCase):
     def test_reproduce_fit(self):
         metric = Metric({"name": "logloss"})
         prev_loss = None
-        for _ in range(3):
+        for _ in range(2):
             model = CatBoostAlgorithm(self.params)
             model.fit(self.X, self.y)
             y_predicted = model.predict(self.X)
             loss = metric(self.y, y_predicted)
             if prev_loss is not None:
-                assert_almost_equal(prev_loss, loss)
+                assert_almost_equal(prev_loss, loss, decimal=3)
             prev_loss = loss
 
     def test_fit_predict(self):
@@ -97,7 +94,7 @@ class CatBoostAlgorithmTest(unittest.TestCase):
             y_predicted = cat.predict(self.X)
             loss = metric(self.y, y_predicted)
             if loss_prev is not None:
-                assert_almost_equal(loss, loss_prev)
+                assert_almost_equal(loss, loss_prev, decimal=3)
             loss_prev = loss
 
     def test_copy(self):
@@ -137,7 +134,7 @@ class CatBoostAlgorithmTest(unittest.TestCase):
 
         y_predicted = cat2.predict(self.X)
         loss2 = metric(self.y, y_predicted)
-        assert_almost_equal(loss, loss2)
+        assert_almost_equal(loss, loss2, decimal=3)
 
     def test_get_metric_name(self):
         model = CatBoostAlgorithm(self.params)

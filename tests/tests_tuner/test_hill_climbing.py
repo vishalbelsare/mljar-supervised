@@ -1,5 +1,5 @@
-import os
 import unittest
+
 from supervised.tuner.mljar_tuner import MljarTuner
 
 
@@ -25,7 +25,6 @@ class ModelMock:
 
 class TunerHillClimbingTest(unittest.TestCase):
     def test_hill_climbing(self):
-
         models = []
         models += [
             ModelMock(

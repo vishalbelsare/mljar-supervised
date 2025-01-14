@@ -1,16 +1,13 @@
-import os
-import json
 import numpy as np
 import pandas as pd
 
-from supervised.preprocessing.preprocessing_utils import PreprocessingUtils
-from supervised.preprocessing.label_encoder import LabelEncoder
 from supervised.preprocessing.label_binarizer import LabelBinarizer
+from supervised.preprocessing.label_encoder import LabelEncoder
 from supervised.preprocessing.loo_encoder import LooEncoder
+from supervised.preprocessing.preprocessing_utils import PreprocessingUtils
 
 
 class PreprocessingCategorical(object):
-
     CONVERT_ONE_HOT = "categorical_to_onehot"
     CONVERT_INTEGER = "categorical_to_int"
     CONVERT_LOO = "categorical_to_loo"
@@ -36,7 +33,6 @@ class PreprocessingCategorical(object):
 
     def _fit_categorical_convert(self, X):
         for column in self._columns:
-
             if PreprocessingUtils.get_type(X[column]) != PreprocessingUtils.CATEGORICAL:
                 # no need to convert, already a number
                 continue
@@ -76,7 +72,16 @@ class PreprocessingCategorical(object):
                     # convert to integer
                     lbl = LabelEncoder()
                     lbl.from_json(lbl_params)
-                    X.loc[:, column] = lbl.transform(X.loc[:, column])
+                    transformed_values = lbl.transform(X.loc[:, column])
+                    # check for pandas FutureWarning: Setting an item
+                    # of incompatible dtype is deprecated and will raise
+                    # in a future error of pandas.
+                    if transformed_values.dtype != X.loc[:, column].dtype and \
+                        (X.loc[:, column].dtype == bool or X.loc[:, column].dtype == int):
+                        X = X.astype({column: transformed_values.dtype})
+                    if isinstance(X[column].dtype, pd.CategoricalDtype):
+                        X[column] = X[column].astype('object')
+                    X.loc[:, column] = transformed_values
 
             return X
 
@@ -91,7 +96,14 @@ class PreprocessingCategorical(object):
                 # convert to integer
                 lbl = LabelEncoder()
                 lbl.from_json(lbl_params)
-                X.loc[:, column] = lbl.inverse_transform(X.loc[:, column])
+                transformed_values = lbl.inverse_transform(X.loc[:, column])
+                # check for pandas FutureWarning: Setting an item
+                # of incompatible dtype is deprecated and will raise
+                # in a future error of pandas.
+                if transformed_values.dtype != X.loc[:, column].dtype and \
+                        (X.loc[:, column].dtype == bool or X.loc[:, column].dtype == int):
+                        X = X.astype({column: transformed_values.dtype})
+                X.loc[:, column] = transformed_values
 
         return X
 

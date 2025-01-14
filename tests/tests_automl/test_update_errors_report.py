@@ -1,24 +1,19 @@
 import os
-import unittest
-import tempfile
-import json
-import numpy as np
-import pandas as pd
 import shutil
+import unittest
+
+import numpy as np
 
 from supervised import AutoML
-from supervised.exceptions import AutoMLException
 
 
 class AutoMLUpdateErrorsReportTest(unittest.TestCase):
-
     automl_dir = "automl_testing"
 
     def tearDown(self):
         shutil.rmtree(self.automl_dir, ignore_errors=True)
 
     def test_custom_init(self):
-
         X = np.random.uniform(size=(30, 2))
         y = np.random.randint(0, 2, size=(30,))
 
@@ -27,4 +22,5 @@ class AutoMLUpdateErrorsReportTest(unittest.TestCase):
 
         errors_filename = os.path.join(self.automl_dir, "errors.md")
         self.assertTrue(os.path.exists(errors_filename))
-        self.assertTrue("bad error" in open(errors_filename).read())
+        with open(errors_filename) as file:
+            self.assertTrue("bad error" in file.read())

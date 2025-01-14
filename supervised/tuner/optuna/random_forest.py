@@ -1,14 +1,13 @@
+import optuna
+
 from supervised.algorithms.random_forest import (
     RandomForestAlgorithm,
     RandomForestRegressorAlgorithm,
 )
-
-import optuna
-
+from supervised.algorithms.registry import (
+    REGRESSION,
+)
 from supervised.utils.metric import Metric
-from supervised.algorithms.registry import BINARY_CLASSIFICATION
-from supervised.algorithms.registry import MULTICLASS_CLASSIFICATION
-from supervised.algorithms.registry import REGRESSION
 
 
 class RandomForestObjective:
@@ -33,7 +32,7 @@ class RandomForestObjective:
         self.y_validation = y_validation
         self.eval_metric = eval_metric
         self.n_jobs = n_jobs
-        self.objective = "mse" if ml_task == REGRESSION else "gini"
+        self.objective = "squared_error" if ml_task == REGRESSION else "gini"
         self.max_steps = 10  # RF is trained in steps 100 trees each
         self.seed = random_state
 
@@ -45,7 +44,7 @@ class RandomForestObjective:
                 else RandomForestAlgorithm
             )
             self.objective = (
-                "mse"
+                "squared_error"
                 if self.ml_task == REGRESSION
                 else trial.suggest_categorical("criterion", ["gini", "entropy"])
             )

@@ -1,20 +1,17 @@
-import os
 import gc
 import logging
-import numpy as np
-import pandas as pd
+import os
 import warnings
+
+import numpy as np
 
 log = logging.getLogger(__name__)
 
-from sklearn.model_selection import StratifiedKFold
-from sklearn.model_selection import KFold
+from sklearn.model_selection import KFold, StratifiedKFold
 
-from supervised.validation.validator_base import BaseValidator
 from supervised.exceptions import AutoMLException
 from supervised.utils.utils import load_data
-from supervised.utils.config import mem
-import time
+from supervised.validation.validator_base import BaseValidator
 
 
 class KFoldValidator(BaseValidator):
@@ -28,7 +25,9 @@ class KFoldValidator(BaseValidator):
         self.repeats = self.params.get("repeats", 1)
 
         if not self.shuffle and self.repeats > 1:
-            warnings.warn("Disable repeats in validation because shuffle is disabled")
+            warnings.warn(
+                "Disable repeats in validation because shuffle is disabled", UserWarning
+            )
             self.repeats = 1
 
         self.skf = []
@@ -65,6 +64,7 @@ class KFoldValidator(BaseValidator):
         self._X_path = self.params.get("X_path")
         self._y_path = self.params.get("y_path")
         self._sample_weight_path = self.params.get("sample_weight_path")
+        self._sensitive_features_path = self.params.get("sensitive_features_path")
 
         if self._X_path is None or self._y_path is None:
             raise AutoMLException("No data path set in KFoldValidator params")
@@ -72,7 +72,6 @@ class KFoldValidator(BaseValidator):
         folds_path = os.path.join(self._results_path, "folds")
 
         if not os.path.exists(folds_path):
-
             os.mkdir(folds_path)
             X = load_data(self._X_path)
             y = load_data(self._y_path)
@@ -108,7 +107,6 @@ class KFoldValidator(BaseValidator):
             log.debug("Folds split already done, reuse it")
 
     def get_split(self, k, repeat=0):
-
         repeat_str = f"_repeat_{repeat}" if self.repeats > 1 else ""
 
         train_index_file = os.path.join(
@@ -130,11 +128,21 @@ class KFoldValidator(BaseValidator):
             sample_weight = load_data(self._sample_weight_path)
             sample_weight = sample_weight["sample_weight"]
 
+        sensitive_features = None
+        if self._sensitive_features_path is not None:
+            sensitive_features = load_data(self._sensitive_features_path)
+
         train_data = {"X": X.loc[train_index], "y": y.loc[train_index]}
         validation_data = {"X": X.loc[validation_index], "y": y.loc[validation_index]}
         if sample_weight is not None:
             train_data["sample_weight"] = sample_weight.loc[train_index]
             validation_data["sample_weight"] = sample_weight.loc[validation_index]
+
+        if sensitive_features is not None:
+            train_data["sensitive_features"] = sensitive_features.loc[train_index]
+            validation_data["sensitive_features"] = sensitive_features.loc[
+                validation_index
+            ]
 
         return (train_data, validation_data)
 

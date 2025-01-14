@@ -1,27 +1,23 @@
-import numpy as np
-import pandas as pd
 import lightgbm as lgb
+import numpy as np
 import optuna
+import optuna_integration
+import pandas as pd
 
-from supervised.utils.metric import Metric
+from supervised.algorithms.lightgbm import lightgbm_eval_metric, lightgbm_objective
+from supervised.algorithms.registry import (
+    MULTICLASS_CLASSIFICATION,
+)
 from supervised.utils.metric import (
+    Metric,
+    lightgbm_eval_metric_accuracy,
+    lightgbm_eval_metric_average_precision,
+    lightgbm_eval_metric_f1,
+    lightgbm_eval_metric_pearson,
     lightgbm_eval_metric_r2,
     lightgbm_eval_metric_spearman,
-    lightgbm_eval_metric_pearson,
-    lightgbm_eval_metric_f1,
-    lightgbm_eval_metric_average_precision,
-    lightgbm_eval_metric_accuracy,
     lightgbm_eval_metric_user_defined,
 )
-from supervised.algorithms.registry import BINARY_CLASSIFICATION
-from supervised.algorithms.registry import MULTICLASS_CLASSIFICATION
-from supervised.algorithms.registry import REGRESSION
-
-from supervised.algorithms.lightgbm import (
-    lightgbm_objective,
-    lightgbm_eval_metric,
-)
-
 
 EPS = 1e-8
 
@@ -136,12 +132,14 @@ class LightgbmObjective:
             param["num_class"] = self.num_class
 
         try:
-
             metric_name = self.eval_metric_name
             if metric_name == "custom":
                 metric_name = self.custom_eval_metric_name
-            pruning_callback = optuna.integration.LightGBMPruningCallback(
+            pruning_callback = optuna_integration.LightGBMPruningCallback(
                 trial, metric_name, "validation"
+            )
+            early_stopping_callback = lgb.early_stopping(
+                self.early_stopping_rounds, verbose=False
             )
 
             gbm = lgb.train(
@@ -149,10 +147,8 @@ class LightgbmObjective:
                 self.dtrain,
                 valid_sets=[self.dvalid],
                 valid_names=["validation"],
-                verbose_eval=False,
-                callbacks=[pruning_callback],
+                callbacks=[pruning_callback, early_stopping_callback],
                 num_boost_round=self.rounds,
-                early_stopping_rounds=self.early_stopping_rounds,
                 feval=self.custom_eval_metric,
             )
 

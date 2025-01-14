@@ -1,13 +1,10 @@
-from supervised.algorithms.nn import (
-    MLPAlgorithm,
-    MLPRegressorAlgorithm,
-)
 import optuna
 
+from supervised.algorithms.nn import MLPAlgorithm, MLPRegressorAlgorithm
+from supervised.algorithms.registry import (
+    REGRESSION,
+)
 from supervised.utils.metric import Metric
-from supervised.algorithms.registry import BINARY_CLASSIFICATION
-from supervised.algorithms.registry import MULTICLASS_CLASSIFICATION
-from supervised.algorithms.registry import REGRESSION
 
 
 class NeuralNetworkObjective:

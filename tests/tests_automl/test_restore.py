@@ -1,22 +1,18 @@
-import os
-import unittest
-import tempfile
 import json
+import os
+import shutil
+import unittest
+
 import numpy as np
 import pandas as pd
-import shutil
-from supervised import AutoML
-from numpy.testing import assert_almost_equal
-from sklearn import datasets
-from supervised.exceptions import AutoMLException
 
+from supervised import AutoML
 from supervised.algorithms.xgboost import additional
 
 additional["max_rounds"] = 1
 
 
 class AutoMLRestoreTest(unittest.TestCase):
-
     automl_dir = "automl_tests"
     rows = 50
 
@@ -40,7 +36,8 @@ class AutoMLRestoreTest(unittest.TestCase):
         # Get number of starting models
         n1 = len([x for x in os.listdir(self.automl_dir) if x[0].isdigit()])
 
-        progress = json.load(open(os.path.join(self.automl_dir, "progress.json"), "r"))
+        with open(os.path.join(self.automl_dir, "progress.json"), "r") as file:
+            progress = json.load(file)
         progress["fit_level"] = "default_algorithms"
 
         with open(os.path.join(self.automl_dir, "progress.json"), "w") as fout:

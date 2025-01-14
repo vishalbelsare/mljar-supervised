@@ -1,15 +1,8 @@
 import os
+
 import numpy as np
-import pandas as pd
-
-from matplotlib import pyplot as plt
 import scikitplot as skplt
-
-from supervised.algorithms.registry import (
-    BINARY_CLASSIFICATION,
-    MULTICLASS_CLASSIFICATION,
-    REGRESSION,
-)
+from matplotlib import pyplot as plt
 
 
 class AdditionalPlots:
@@ -73,8 +66,15 @@ class AdditionalPlots:
             #
             fig = plt.figure(figsize=(10, 7))
             ax1 = fig.add_subplot(1, 1, 1)
+            # transform target if needed to be {0, 1}
+            target_uniq_values = np.unique(target)
+            target_transformed = target.values.ravel()
+            if not (0 in target_uniq_values and 1 in target_uniq_values):
+                mapping = {target_uniq_values[0]: 0, target_uniq_values[1]: 1}
+                target_transformed = target.map(mapping)
+            # create a plot
             _ = skplt.metrics.plot_calibration_curve(
-                target.values.ravel(), [predicted_probas], ["Classifier"], ax=ax1
+                target_transformed, [predicted_probas], ["Classifier"], ax=ax1
             )
             figures += [
                 {

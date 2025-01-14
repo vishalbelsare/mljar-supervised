@@ -1,30 +1,28 @@
-import os
 import logging
-import warnings
+import os
+
 import numpy as np
 import pandas as pd
 import scipy as sp
 
 logger = logging.getLogger(__name__)
-from supervised.utils.metric import Metric
 from supervised.utils.config import LOG_LEVEL
 
 logger.setLevel(LOG_LEVEL)
 
-import matplotlib.pyplot as plt
 import warnings
+
+import matplotlib.pyplot as plt
 
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
 
 
 class AutoMLPlots:
-
     features_heatmap_fname = "features_heatmap.png"
     correlation_heatmap_fname = "correlation_heatmap.png"
 
     @staticmethod
     def add(results_path, models, fout):
-
         AutoMLPlots.models_feature_importance(results_path, models)
 
         features_plot_path = os.path.join(
@@ -52,7 +50,6 @@ class AutoMLPlots:
         try:
             model_feature_imp = {}
             for m in models:
-
                 model_path = os.path.join(results_path, m.get_name())
                 imp_data = [
                     f

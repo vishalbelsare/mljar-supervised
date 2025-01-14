@@ -1,26 +1,27 @@
 import logging
 import os
-import sklearn
 import warnings
-import numpy as np
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.tree import DecisionTreeRegressor
 
-from supervised.algorithms.algorithm import BaseAlgorithm
-from supervised.algorithms.sklearn import SklearnAlgorithm
-from supervised.algorithms.registry import AlgorithmsRegistry
+import numpy as np
+import sklearn
+from sklearn.base import BaseEstimator, ClassifierMixin, RegressorMixin
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
+
 from supervised.algorithms.registry import (
     BINARY_CLASSIFICATION,
     MULTICLASS_CLASSIFICATION,
     REGRESSION,
+    AlgorithmsRegistry,
 )
+from supervised.algorithms.sklearn import SklearnAlgorithm
 from supervised.utils.config import LOG_LEVEL
 
 logger = logging.getLogger(__name__)
 logger.setLevel(LOG_LEVEL)
 
+import dtreeviz
 from sklearn.tree import _tree
-from dtreeviz.trees import dtreeviz
+
 from supervised.utils.subsample import subsample
 
 
@@ -35,7 +36,6 @@ def get_rules(tree, feature_names, class_names):
     path = []
 
     def recurse(node, path, paths):
-
         if tree_.feature[node] != _tree.TREE_UNDEFINED:
             name = feature_name[node]
             threshold = tree_.threshold[node]
@@ -87,8 +87,7 @@ def save_rules(tree, feature_names, class_names, model_file_path, learner_name):
         logger.info(f"Problem with extracting decision tree rules. {str(e)}")
 
 
-class DecisionTreeAlgorithm(SklearnAlgorithm):
-
+class DecisionTreeAlgorithm(ClassifierMixin, SklearnAlgorithm):
     algorithm_name = "Decision Tree"
     algorithm_short_name = "Decision Tree"
 
@@ -141,7 +140,8 @@ class DecisionTreeAlgorithm(SklearnAlgorithm):
                 if len(class_names) > 10:
                     # dtreeviz does not support more than 10 classes
                     return
-                viz = dtreeviz(
+
+                viz = dtreeviz.model(
                     self.model,
                     X_train,
                     y_train,
@@ -149,8 +149,10 @@ class DecisionTreeAlgorithm(SklearnAlgorithm):
                     feature_names=X_train.columns,
                     class_names=class_names,
                 )
-                tree_file_plot = os.path.join(model_file_path, learner_name + "_tree.svg")
-                viz.save(tree_file_plot)
+                tree_file_plot = os.path.join(
+                    model_file_path, learner_name + "_tree.svg"
+                )
+                viz.view().save(tree_file_plot)
             except Exception as e:
                 logger.info(f"Problem when visualizing decision tree. {str(e)}")
 
@@ -159,8 +161,7 @@ class DecisionTreeAlgorithm(SklearnAlgorithm):
             )
 
 
-class DecisionTreeRegressorAlgorithm(SklearnAlgorithm):
-
+class DecisionTreeRegressorAlgorithm(RegressorMixin, SklearnAlgorithm):
     algorithm_name = "Decision Tree"
     algorithm_short_name = "Decision Tree"
 
@@ -170,7 +171,7 @@ class DecisionTreeRegressorAlgorithm(SklearnAlgorithm):
         self.library_version = sklearn.__version__
         self.max_iters = additional.get("max_steps", 1)
         self.model = DecisionTreeRegressor(
-            criterion=params.get("criterion", "mse"),
+            criterion=params.get("criterion", "squared_error"),
             max_depth=params.get("max_depth", 3),
             random_state=params.get("seed", 1),
         )
@@ -222,17 +223,21 @@ class DecisionTreeRegressorAlgorithm(SklearnAlgorithm):
                         feature_names=x.columns,
                     )
                 else:
-                    viz = dtreeviz(
+                    viz = dtreeviz.model(
                         self.model,
                         X_train,
                         y_train,
                         target_name="target",
                         feature_names=X_train.columns,
                     )
-                tree_file_plot = os.path.join(model_file_path, learner_name + "_tree.svg")
-                viz.save(tree_file_plot)
+                tree_file_plot = os.path.join(
+                    model_file_path, learner_name + "_tree.svg"
+                )
+                viz.view().save(tree_file_plot)
             except Exception as e:
-                logger.info(f"Problem when visuzalizin decision tree regressor. {str(e)}")
+                logger.info(
+                    f"Problem when visuzalizin decision tree regressor. {str(e)}"
+                )
 
             save_rules(self.model, X_train.columns, None, model_file_path, learner_name)
 
@@ -276,7 +281,7 @@ AlgorithmsRegistry.add(
 
 dt_regression_params = {
     "criterion": [
-        "mse",
+        "squared_error",
         "friedman_mse",
     ],  # remove "mae" because it slows down a lot https://github.com/scikit-learn/scikit-learn/issues/9626
     "max_depth": [2, 3, 4],
@@ -288,7 +293,7 @@ regression_required_preprocessing = [
     "text_transform",
 ]
 
-regression_default_params = {"criterion": "mse", "max_depth": 3}
+regression_default_params = {"criterion": "squared_error", "max_depth": 3}
 
 AlgorithmsRegistry.add(
     REGRESSION,

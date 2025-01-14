@@ -1,29 +1,30 @@
-import logging
+import contextlib
 import copy
+import logging
+import os
+
+import lightgbm as lgb
 import numpy as np
 import pandas as pd
-import time
-import os
-import contextlib
-import lightgbm as lgb
+from sklearn.base import ClassifierMixin, RegressorMixin
 
 from supervised.algorithms.algorithm import BaseAlgorithm
-from supervised.algorithms.registry import AlgorithmsRegistry
 from supervised.algorithms.registry import (
     BINARY_CLASSIFICATION,
     MULTICLASS_CLASSIFICATION,
     REGRESSION,
-)
-from supervised.utils.metric import (
-    lightgbm_eval_metric_r2,
-    lightgbm_eval_metric_spearman,
-    lightgbm_eval_metric_pearson,
-    lightgbm_eval_metric_f1,
-    lightgbm_eval_metric_average_precision,
-    lightgbm_eval_metric_accuracy,
-    lightgbm_eval_metric_user_defined,
+    AlgorithmsRegistry,
 )
 from supervised.utils.config import LOG_LEVEL
+from supervised.utils.metric import (
+    lightgbm_eval_metric_accuracy,
+    lightgbm_eval_metric_average_precision,
+    lightgbm_eval_metric_f1,
+    lightgbm_eval_metric_pearson,
+    lightgbm_eval_metric_r2,
+    lightgbm_eval_metric_spearman,
+    lightgbm_eval_metric_user_defined,
+)
 
 logger = logging.getLogger(__name__)
 logger.setLevel(LOG_LEVEL)
@@ -84,7 +85,6 @@ def lightgbm_eval_metric(ml_task, automl_eval_metric):
 
 
 class LightgbmAlgorithm(BaseAlgorithm):
-
     algorithm_name = "LightGBM"
     algorithm_short_name = "LightGBM"
 
@@ -213,7 +213,6 @@ class LightgbmAlgorithm(BaseAlgorithm):
                 init_model=self.model,
             )
         else:
-
             valid_names = None
             esr = None
             if X_validation is not None and y_validation is not None:
@@ -240,10 +239,11 @@ class LightgbmAlgorithm(BaseAlgorithm):
                 num_boost_round=self.rounds,
                 valid_sets=valid_sets,
                 valid_names=valid_names,
-                early_stopping_rounds=esr,
-                evals_result=evals_result,
-                verbose_eval=False,
                 feval=self.custom_eval_metric,
+                callbacks=[
+                    lgb.early_stopping(esr, verbose=False),
+                    lgb.record_evaluation(evals_result),
+                ],
             )
 
             del lgb_train
@@ -261,6 +261,9 @@ class LightgbmAlgorithm(BaseAlgorithm):
                     }
                 )
                 result.to_csv(log_to_file, index=False, header=False)
+
+            if self.params["ml_task"] != REGRESSION:
+                self.classes_ = np.unique(y)
 
     def is_fitted(self):
         return self.model is not None
@@ -347,9 +350,14 @@ classification_multi_default_params = {
 lgbr_params = copy.deepcopy(lgbm_bin_params)
 lgbr_params["objective"] = ["regression"]
 
+
+class LgbmClassifier(ClassifierMixin, LightgbmAlgorithm):
+    pass
+
+
 AlgorithmsRegistry.add(
     BINARY_CLASSIFICATION,
-    LightgbmAlgorithm,
+    LgbmClassifier,
     lgbm_bin_params,
     required_preprocessing,
     additional,
@@ -358,7 +366,7 @@ AlgorithmsRegistry.add(
 
 AlgorithmsRegistry.add(
     MULTICLASS_CLASSIFICATION,
-    LightgbmAlgorithm,
+    LgbmClassifier,
     lgbm_multi_params,
     required_preprocessing,
     additional,
@@ -383,9 +391,14 @@ regression_default_params = {
     "min_data_in_leaf": 10,
 }
 
+
+class LgbmRegressor(RegressorMixin, LightgbmAlgorithm):
+    pass
+
+
 AlgorithmsRegistry.add(
     REGRESSION,
-    LightgbmAlgorithm,
+    LgbmRegressor,
     lgbr_params,
     regression_required_preprocessing,
     additional,

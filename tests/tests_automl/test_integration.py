@@ -1,18 +1,15 @@
-import os
+import shutil
 import unittest
-import tempfile
-import json
+
 import numpy as np
 import pandas as pd
-import shutil
 from sklearn import datasets
 
 from supervised import AutoML
 
 
 class AutoMLIntegrationTest(unittest.TestCase):
-
-    automl_dir = "automl_1"
+    automl_dir = "AutoMLIntegrationTest"
 
     def tearDown(self):
         shutil.rmtree(self.automl_dir, ignore_errors=True)
@@ -76,7 +73,7 @@ class AutoMLIntegrationTest(unittest.TestCase):
         self.assertEqual(len(p), X.shape[0])
 
     def test_different_input_types(self):
-        """ Test the different data input types for AutoML"""
+        """Test the different data input types for AutoML"""
         model = AutoML(
             total_time_limit=10,
             explain_level=0,
@@ -147,7 +144,7 @@ class AutoMLIntegrationTest(unittest.TestCase):
             random_state=0,
         )
         X = pd.DataFrame(X)
-        X = X.astype(np.float16)
+        X = X.astype(float)
         a.fit(X, y)
         p = a.predict(X)
         self.assertIsInstance(p, np.ndarray)

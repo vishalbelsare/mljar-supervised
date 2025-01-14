@@ -1,27 +1,26 @@
 import logging
 import os
-import sklearn
-import pandas as pd
+
 import numpy as np
-import warnings
+import pandas as pd
+import sklearn
+from sklearn.base import ClassifierMixin, RegressorMixin
+from sklearn.linear_model import LinearRegression, LogisticRegression
 
-from sklearn.exceptions import ConvergenceWarning
-from sklearn.linear_model import LogisticRegression, LinearRegression
-
-from supervised.algorithms.algorithm import BaseAlgorithm
+from supervised.algorithms.registry import (
+    BINARY_CLASSIFICATION,
+    MULTICLASS_CLASSIFICATION,
+    REGRESSION,
+    AlgorithmsRegistry,
+)
 from supervised.algorithms.sklearn import SklearnAlgorithm
-from supervised.algorithms.registry import AlgorithmsRegistry
-from supervised.algorithms.registry import BINARY_CLASSIFICATION
-from supervised.algorithms.registry import MULTICLASS_CLASSIFICATION
-from supervised.algorithms.registry import REGRESSION
 from supervised.utils.config import LOG_LEVEL
 
 logger = logging.getLogger(__name__)
 logger.setLevel(LOG_LEVEL)
 
 
-class LinearAlgorithm(SklearnAlgorithm):
-
+class LinearAlgorithm(ClassifierMixin, SklearnAlgorithm):
     algorithm_name = "Logistic Regression"
     algorithm_short_name = "Linear"
 
@@ -105,8 +104,7 @@ class LinearAlgorithm(SklearnAlgorithm):
             )
 
 
-class LinearRegressorAlgorithm(SklearnAlgorithm):
-
+class LinearRegressorAlgorithm(RegressorMixin, SklearnAlgorithm):
     algorithm_name = "Linear Regression"
     algorithm_short_name = "Linear"
 

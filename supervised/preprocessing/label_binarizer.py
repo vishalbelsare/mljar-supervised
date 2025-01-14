@@ -1,5 +1,4 @@
 import numpy as np
-import json
 
 
 class LabelBinarizer(object):
@@ -7,9 +6,11 @@ class LabelBinarizer(object):
         self._new_columns = []
         self._uniq_values = None
         self._old_column = None
+        self._old_column_dtype = None
 
     def fit(self, X, column):
         self._old_column = column
+        self._old_column_dtype = str(X[column].dtype)
         self._uniq_values = np.unique(X[column].values)
         # self._uniq_values = [str(u) for u in self._uniq_values]
 
@@ -35,7 +36,7 @@ class LabelBinarizer(object):
         if self._old_column is None:
             return X
 
-        old_col = X[self._new_columns[0]] * 0
+        old_col = (X[self._new_columns[0]] * 0).astype(self._old_column_dtype)
 
         for unique_value in self._uniq_values:
             new_col = f"{self._old_column}_{unique_value}"
@@ -49,14 +50,20 @@ class LabelBinarizer(object):
         return X
 
     def to_json(self):
-        self._uniq_values = [
-            i if type(i) != np.bool_ else bool(i) for i in list(self._uniq_values)
-        ]
+        self._uniq_values = [str(i) for i in list(self._uniq_values)]
         data_json = {
             "new_columns": list(self._new_columns),
             "unique_values": self._uniq_values,
             "old_column": self._old_column,
+            "old_column_dtype": self._old_column_dtype,
         }
+
+        if (
+            "True" in self._uniq_values
+            and "False" in self._uniq_values
+            and len(self._uniq_values) == 2
+        ):
+            self._uniq_values = [False, True]
 
         return data_json
 
@@ -64,3 +71,11 @@ class LabelBinarizer(object):
         self._new_columns = data_json.get("new_columns", None)
         self._uniq_values = data_json.get("unique_values", None)
         self._old_column = data_json.get("old_column", None)
+        self._old_column_dtype = data_json.get("old_column_dtype", None)
+
+        if (
+            "True" in self._uniq_values
+            and "False" in self._uniq_values
+            and len(self._uniq_values) == 2
+        ):
+            self._uniq_values = [False, True]

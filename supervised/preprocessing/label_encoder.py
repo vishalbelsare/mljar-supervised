@@ -1,7 +1,7 @@
-import copy
 import logging
-import numpy as np
 from decimal import Decimal
+
+import numpy as np
 from sklearn import preprocessing as sk_preproc
 
 from supervised.utils.config import LOG_LEVEL
@@ -50,5 +50,5 @@ class LabelEncoder(object):
     def from_json(self, data_json):
         keys = np.array(list(data_json.keys()))
         if len(keys) == 2 and "False" in keys and "True" in keys:
-            keys = [False, True]
+            keys = np.array([False, True])
         self.lbl.classes_ = keys

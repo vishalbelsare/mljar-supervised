@@ -1,35 +1,32 @@
-import logging
 import copy
+import logging
+
 import numpy as np
 import pandas as pd
-import os
-import time
-from inspect import signature
 import xgboost as xgb
+from sklearn.base import ClassifierMixin, RegressorMixin
 
 from supervised.algorithms.algorithm import BaseAlgorithm
-from supervised.algorithms.registry import AlgorithmsRegistry
 from supervised.algorithms.registry import (
     BINARY_CLASSIFICATION,
     MULTICLASS_CLASSIFICATION,
     REGRESSION,
-)
-from supervised.utils.metric import (
-    xgboost_eval_metric_r2,
-    xgboost_eval_metric_spearman,
-    xgboost_eval_metric_pearson,
-    xgboost_eval_metric_f1,
-    xgboost_eval_metric_average_precision,
-    xgboost_eval_metric_accuracy,
-    xgboost_eval_metric_mse,
-    xgboost_eval_metric_user_defined,
+    AlgorithmsRegistry,
 )
 from supervised.utils.config import LOG_LEVEL
+from supervised.utils.metric import (
+    xgboost_eval_metric_accuracy,
+    xgboost_eval_metric_average_precision,
+    xgboost_eval_metric_f1,
+    xgboost_eval_metric_mse,
+    xgboost_eval_metric_pearson,
+    xgboost_eval_metric_r2,
+    xgboost_eval_metric_spearman,
+    xgboost_eval_metric_user_defined,
+)
 
 logger = logging.getLogger(__name__)
 logger.setLevel(LOG_LEVEL)
-
-import tempfile
 
 
 class XgbAlgorithmException(Exception):
@@ -127,7 +124,6 @@ class XgbAlgorithm(BaseAlgorithm):
         elif self.params.get("eval_metric", "") == "user_defined_metric":
             self.custom_eval_metric = xgboost_eval_metric_user_defined
 
-        self.best_ntree_limit = 0
         logger.debug("XgbLearner __init__")
 
     """
@@ -173,14 +169,19 @@ class XgbAlgorithm(BaseAlgorithm):
             missing=np.NaN,
             weight=sample_weight,
         )
-        dvalidation = xgb.DMatrix(
-            X_validation.values
-            if isinstance(X_validation, pd.DataFrame)
-            else X_validation,
-            label=y_validation,
-            missing=np.NaN,
-            weight=sample_weight_validation,
-        )
+        
+        if X_validation is not None and y_validation is not None:       
+            dvalidation = xgb.DMatrix(
+                X_validation.values
+                if isinstance(X_validation, pd.DataFrame)
+                else X_validation,
+                label=y_validation,
+                missing=np.NaN,
+                weight=sample_weight_validation,
+            )
+        else:
+            dvalidation = None
+            
         evals_result = {}
 
         evals = []
@@ -205,19 +206,14 @@ class XgbAlgorithm(BaseAlgorithm):
             early_stopping_rounds=esr,
             evals_result=evals_result,
             verbose_eval=False,
-            feval=self.custom_eval_metric
+            custom_metric=self.custom_eval_metric
             # callbacks=[time_constraint] # callback slows down by factor ~8
         )
 
         del dtrain
         del dvalidation
 
-        # dump_list = self.model.get_dump()
-        # num_trees = len(dump_list)
-        # print(self.model.best_ntree_limit, num_trees)
-
         if log_to_file is not None:
-
             metric_name = list(evals_result["train"].keys())[-1]
 
             result = pd.DataFrame(
@@ -243,9 +239,9 @@ class XgbAlgorithm(BaseAlgorithm):
 
             result.to_csv(log_to_file, index=False, header=False)
 
-        # save best_ntree_limit because of:
-        # https://github.com/dmlc/xgboost/issues/805
-        self.best_ntree_limit = self.model.best_ntree_limit
+        if self.params["ml_task"] != REGRESSION:
+            self.classes_ = np.unique(y)
+
         # fix high memory consumption in xgboost,
         # waiting for release with fix
         # https://github.com/dmlc/xgboost/issues/5474
@@ -270,12 +266,13 @@ class XgbAlgorithm(BaseAlgorithm):
         dtrain = xgb.DMatrix(
             X.values if isinstance(X, pd.DataFrame) else X, missing=np.NaN
         )
-        if "iteration_range" in str(signature(self.model.predict)):
-            # the newer version
-            a = self.model.predict(dtrain, iteration_range=(0, self.best_ntree_limit))
+        # xgboost > 2.0.0 version
+        if hasattr(self.model, "best_iteration"):
+            a = self.model.predict(
+                dtrain, iteration_range=(0, self.model.best_iteration + 1)
+            )
         else:
-            # the older interface
-            a = self.model.predict(dtrain, ntree_limit=self.best_ntree_limit)
+            a = self.model.predict(dtrain)
 
         return a
 
@@ -294,7 +291,9 @@ class XgbAlgorithm(BaseAlgorithm):
         self.model_file_path = model_file_path
 
     def file_extension(self):
-        return "xgboost"
+        # we need to keep models as json files
+        # to keep information about best_iteration
+        return "xgboost.json"
 
     def get_metric_name(self):
         metric = self.params.get("eval_metric")
@@ -367,9 +366,14 @@ required_preprocessing = [
     "target_as_integer",
 ]
 
+
+class XgbClassifier(ClassifierMixin, XgbAlgorithm):
+    pass
+
+
 AlgorithmsRegistry.add(
     BINARY_CLASSIFICATION,
-    XgbAlgorithm,
+    XgbClassifier,
     xgb_bin_class_params,
     required_preprocessing,
     additional,
@@ -378,7 +382,7 @@ AlgorithmsRegistry.add(
 
 AlgorithmsRegistry.add(
     MULTICLASS_CLASSIFICATION,
-    XgbAlgorithm,
+    XgbClassifier,
     xgb_multi_class_params,
     required_preprocessing,
     additional,
@@ -394,9 +398,13 @@ regression_required_preprocessing = [
 ]
 
 
+class XgbRegressor(RegressorMixin, XgbAlgorithm):
+    pass
+
+
 AlgorithmsRegistry.add(
     REGRESSION,
-    XgbAlgorithm,
+    XgbRegressor,
     xgb_regression_params,
     regression_required_preprocessing,
     additional,

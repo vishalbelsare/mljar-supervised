@@ -1,20 +1,22 @@
+import itertools
+import json
 import os
+import time
+
 import numpy as np
 import pandas as pd
-import datetime
-import json
-import time
-import itertools
 from joblib import Parallel, delayed
+from sklearn.metrics import log_loss, mean_squared_error
 from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
-from sklearn.metrics import log_loss, mean_squared_error
+
 from supervised.algorithms.registry import (
     BINARY_CLASSIFICATION,
     MULTICLASS_CLASSIFICATION,
     REGRESSION,
 )
 from supervised.exceptions import AutoMLException
+from supervised.utils.jsonencoder import MLJSONEncoder
 
 
 def get_binary_score(X_train, y_train, X_test, y_test):
@@ -125,7 +127,8 @@ class GoldenFeaturesTransformer(object):
             self._result_path = os.path.join(results_path, self._result_file)
 
             if os.path.exists(self._result_path):
-                self.from_json(json.load(open(self._result_path, "r")), results_path)
+                with open(self._result_path, "r") as file:
+                    self.from_json(json.load(file), results_path)
 
     def fit(self, X, y):
         if self._new_features:
@@ -260,10 +263,9 @@ class GoldenFeaturesTransformer(object):
 
     def save(self):
         with open(self._result_path, "w") as fout:
-            fout.write(json.dumps(self.to_json(), indent=4))
+            fout.write(json.dumps(self.to_json(), indent=4, cls=MLJSONEncoder))
 
     def _subsample(self, X, y):
-
         MAX_SIZE = 10000
         TRAIN_SIZE = 2500
 

@@ -1,11 +1,15 @@
 import uuid
+
 import numpy as np
+
+from sklearn.base import BaseEstimator
+
+from supervised.utils.common import construct_learner_name
 from supervised.utils.importance import PermutationImportance
 from supervised.utils.shap import PlotSHAP
-from supervised.utils.common import construct_learner_name
 
 
-class BaseAlgorithm:
+class BaseAlgorithm(BaseEstimator):
     """
     This is an abstract class.
     All algorithms inherit from BaseAlgorithm.

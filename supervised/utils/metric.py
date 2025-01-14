@@ -5,24 +5,23 @@ log = logging.getLogger(__name__)
 import numpy as np
 import pandas as pd
 import scipy as sp
-from sklearn.metrics import log_loss
-from sklearn.metrics import roc_auc_score
-from sklearn.metrics import mean_squared_error
-from sklearn.metrics import mean_absolute_error
-from sklearn.metrics import accuracy_score
-from sklearn.metrics import r2_score
-from sklearn.metrics import mean_absolute_percentage_error
-from sklearn.metrics import mean_squared_log_error
-from sklearn.metrics import f1_score
-from sklearn.metrics import average_precision_score
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import (
+    accuracy_score,
+    average_precision_score,
+    f1_score,
+    log_loss,
+    mean_absolute_error,
+    mean_absolute_percentage_error,
+    mean_squared_error,
+    mean_squared_log_error,
+    r2_score,
+    roc_auc_score,
+)
 
 
 def logloss(y_true, y_predicted, sample_weight=None):
-    epsilon = 1e-6
-    y_predicted = sp.maximum(epsilon, y_predicted)
-    y_predicted = sp.minimum(1 - epsilon, y_predicted)
-    ll = log_loss(y_true, y_predicted, sample_weight=sample_weight)
+    # convert predicted values to float32 to avoid warnings
+    ll = log_loss(y_true, y_predicted.astype(np.float32), sample_weight=sample_weight)
     return ll
 
 
@@ -47,7 +46,6 @@ def negative_r2(y_true, y_predicted, sample_weight=None):
 
 
 def negative_f1(y_true, y_predicted, sample_weight=None):
-
     if isinstance(y_true, pd.DataFrame):
         y_true = np.array(y_true)
     if isinstance(y_predicted, pd.DataFrame):
@@ -70,7 +68,6 @@ def negative_f1(y_true, y_predicted, sample_weight=None):
 
 
 def negative_accuracy(y_true, y_predicted, sample_weight=None):
-
     if isinstance(y_true, pd.DataFrame):
         y_true = np.array(y_true)
     if isinstance(y_predicted, pd.DataFrame):
@@ -90,7 +87,6 @@ def negative_accuracy(y_true, y_predicted, sample_weight=None):
 
 
 def negative_average_precision(y_true, y_predicted, sample_weight=None):
-
     if isinstance(y_true, pd.DataFrame):
         y_true = np.array(y_true)
     if isinstance(y_predicted, pd.DataFrame):
@@ -107,6 +103,12 @@ def negative_spearman(y_true, y_predicted, sample_weight=None):
     return -c
 
 
+def spearman(y_true, y_predicted, sample_weight=None):
+    # sample weight is ignored
+    c, _ = sp.stats.spearmanr(y_true, y_predicted)
+    return c
+
+
 def negative_pearson(y_true, y_predicted, sample_weight=None):
     # sample weight is ignored
     if isinstance(y_true, pd.DataFrame):
@@ -114,6 +116,10 @@ def negative_pearson(y_true, y_predicted, sample_weight=None):
     if isinstance(y_predicted, pd.DataFrame):
         y_predicted = np.array(y_predicted).ravel()
     return -np.corrcoef(y_true, y_predicted)[0, 1]
+
+
+def pearson(y_true, y_predicted, sample_weight=None):
+    return -negative_pearson(y_true, y_predicted, sample_weight)
 
 
 class MetricException(Exception):
@@ -218,12 +224,6 @@ def lightgbm_eval_metric_average_precision(preds, dtrain):
 def lightgbm_eval_metric_accuracy(preds, dtrain):
     target = dtrain.get_label()
     weight = dtrain.get_weight()
-
-    unique_targets = np.unique(target)
-    if len(unique_targets) > 2:
-        cols = len(unique_targets)
-        rows = int(preds.shape[0] / len(unique_targets))
-        preds = np.reshape(preds, (rows, cols), order="F")
 
     return "accuracy", -negative_accuracy(target, preds, weight), True
 

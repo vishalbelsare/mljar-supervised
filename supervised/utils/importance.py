@@ -1,15 +1,13 @@
-import os
-import json
 import logging
+import os
 import warnings
-import numpy as np
+
 import pandas as pd
-import matplotlib.pyplot as plt
 from sklearn.inspection import permutation_importance
+
 from supervised.algorithms.registry import (
     BINARY_CLASSIFICATION,
     MULTICLASS_CLASSIFICATION,
-    REGRESSION,
 )
 from supervised.utils.subsample import subsample
 
@@ -18,16 +16,15 @@ from supervised.utils.config import LOG_LEVEL
 
 logger.setLevel(LOG_LEVEL)
 
-from sklearn.metrics import make_scorer, log_loss
-import sys
+from sklearn.metrics import log_loss, make_scorer
 
 
 def log_loss_eps(y_true, y_pred):
-    ll = log_loss(y_true, y_pred, eps=1e-7)
+    ll = log_loss(y_true, y_pred)
     return ll
 
 
-log_loss_scorer = make_scorer(log_loss_eps, greater_is_better=False, needs_proba=True)
+log_loss_scorer = make_scorer(log_loss_eps, greater_is_better=False, response_method="predict_proba")
 
 
 class PermutationImportance:
@@ -45,10 +42,8 @@ class PermutationImportance:
         # for scoring check https://scikit-learn.org/stable/modules/model_evaluation.html#scoring-parameter
         if ml_task == BINARY_CLASSIFICATION:
             scoring = log_loss_scorer
-            model.classes_ = np.unique(y_validation)
         elif ml_task == MULTICLASS_CLASSIFICATION:
             scoring = log_loss_scorer
-            model.classes_ = np.unique(y_validation)
         else:
             scoring = "neg_mean_squared_error"
 

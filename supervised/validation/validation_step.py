@@ -2,16 +2,14 @@ import logging
 
 log = logging.getLogger(__name__)
 
+from supervised.exceptions import AutoMLException
+from supervised.validation.validator_custom import CustomValidator
 from supervised.validation.validator_kfold import KFoldValidator
 from supervised.validation.validator_split import SplitValidator
-from supervised.validation.validator_custom import CustomValidator
-
-from supervised.exceptions import AutoMLException
 
 
 class ValidationStep:
     def __init__(self, params):
-
         # kfold is default validation technique
         self.validation_type = params.get("validation_type", "kfold")
 

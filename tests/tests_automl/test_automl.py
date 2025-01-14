@@ -1,26 +1,30 @@
 import os
+import shutil
 import unittest
-import tempfile
-import json
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
-import shutil
-
+import pytest
 from sklearn import datasets
-from sklearn.pipeline import make_pipeline
 from sklearn.decomposition import PCA
+from sklearn.pipeline import make_pipeline
 
 from supervised import AutoML
 from supervised.exceptions import AutoMLException
 
 iris = datasets.load_iris()
-boston = datasets.load_boston()
+housing = datasets.fetch_california_housing()
+# limit data size for faster tests
+housing.data = housing.data[:500]
+housing.target = housing.target[:500]
 breast_cancer = datasets.load_breast_cancer()
 
 
+@pytest.mark.usefixtures("data_folder")
 class AutoMLTest(unittest.TestCase):
-
-    automl_dir = "automl_testing"
+    automl_dir = "AutoMLTest"
+    data_folder: Path
 
     def tearDown(self):
         shutil.rmtree(self.automl_dir, ignore_errors=True)
@@ -29,7 +33,7 @@ class AutoMLTest(unittest.TestCase):
         shutil.rmtree(self.automl_dir, ignore_errors=True)
 
     def test_new_directory(self):
-        """ Directory does not exist, create it """
+        """Directory does not exist, create it"""
         # Assert directory does not exist
         self.assertTrue(not os.path.exists(self.automl_dir))
         # Create model with dir
@@ -42,7 +46,7 @@ class AutoMLTest(unittest.TestCase):
         self.assertTrue(os.path.exists(self.automl_dir))
 
     def test_empty_directory(self):
-        """ Directory exists and is empty, use it """
+        """Directory exists and is empty, use it"""
         # Assert directory does not exist
         self.assertTrue(not os.path.exists(self.automl_dir))
         # Make dir
@@ -118,7 +122,7 @@ class AutoMLTest(unittest.TestCase):
         # Get params after fit
         params_after_fit = model.get_params()
         # Assert before and after params are equal
-        self.assertEquals(params_before_fit, params_after_fit)
+        self.assertEqual(params_before_fit, params_after_fit)
 
     def test_scikit_learn_pipeline_integration(self):
         """
@@ -148,29 +152,31 @@ class AutoMLTest(unittest.TestCase):
         model = AutoML(
             explain_level=0, verbose=0, random_state=1, results_path=self.automl_dir
         )
-        model.fit(boston.data, boston.target)
+        model.fit(housing.data, housing.target)
         with self.assertRaises(AutoMLException) as context:
             # Try to call predict_proba in regression task
-            model.predict_proba(boston.data)
+            model.predict_proba(housing.data)
 
     def test_iris_dataset(self):
-        """ Tests AutoML in the iris dataset (Multiclass classification)"""
+        """Tests AutoML in the iris dataset (Multiclass classification)"""
         model = AutoML(
             explain_level=0, verbose=0, random_state=1, results_path=self.automl_dir
         )
         score = model.fit(iris.data, iris.target).score(iris.data, iris.target)
         self.assertGreater(score, 0.5)
 
-    def test_boston_dataset(self):
-        """ Tests AutoML in the boston dataset (Regression)"""
+    def test_housing_dataset(self):
+        """Tests AutoML in the housing dataset (Regression)"""
         model = AutoML(
             explain_level=0, verbose=0, random_state=1, results_path=self.automl_dir
         )
-        score = model.fit(boston.data, boston.target).score(boston.data, boston.target)
+        score = model.fit(housing.data, housing.target).score(
+            housing.data, housing.target
+        )
         self.assertGreater(score, 0.5)
 
     def test_breast_cancer_dataset(self):
-        """ Tests AutoML in the breast cancer (binary classification)"""
+        """Tests AutoML in the breast cancer (binary classification)"""
         model = AutoML(
             explain_level=0, verbose=0, random_state=1, results_path=self.automl_dir
         )
@@ -180,19 +186,20 @@ class AutoMLTest(unittest.TestCase):
         self.assertGreater(score, 0.5)
 
     def test_titatic_dataset(self):
-        """ Tets AutoML in the titanic dataset (binary classification) with categorial features"""
+        """Tets AutoML in the titanic dataset (binary classification) with categorial features"""
+        data_folder = self.data_folder
         automl = AutoML(
             algorithms=["Xgboost"], mode="Explain", results_path=self.automl_dir
         )
 
-        df = pd.read_csv("tests/data/Titanic/train.csv")
+        df = pd.read_csv((data_folder / "Titanic/train.csv"))
 
         X = df[df.columns[2:]]
         y = df["Survived"]
 
         automl.fit(X, y)
 
-        test = pd.read_csv("tests/data/Titanic/test_with_Survived.csv")
+        test = pd.read_csv(data_folder / "Titanic/test_with_Survived.csv")
         test_cols = [
             "Parch",
             "Ticket",
@@ -318,7 +325,7 @@ class AutoMLTest(unittest.TestCase):
             model.fit(iris.data, iris.target)
 
     def test_too_small_time_limit(self):
-        rows = 100000
+        rows = 1000000
         X = np.random.uniform(size=(rows, 100))
         y = np.random.randint(0, 2, size=(rows,))
 
